@@ -61,9 +61,9 @@ skipli/
 
 ## Images
 
-*- **Verification Page:**
-![img.png](img.png)
-![img_1.png](img_1.png)
+- **Verification Page:**
+![img.png](public/img/img.png)
+![img_1.png](public/img/img_1.png)
 
-*- **Content Generation Page:**
-![img_2.png](img_2.png)
+- **Content Generation Page:**
+![img_2.png](public/img/img_2.png)
