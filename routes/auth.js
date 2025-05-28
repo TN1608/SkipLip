@@ -3,6 +3,7 @@ const router = express.Router();
 const createError = require('http-errors');
 const { db } = require('../config/firebase');
 const { doc, setDoc, getDoc, collection, getDocs, deleteDoc, query, where } = require('firebase/firestore');
+const { GeneratePostCaptions, GetPostIdeas, CreateCaptionsFromIdeas } = require('./generateAI');
 
 // Hàm tạo OTP ngẫu nhiên (6 chữ số)
 const CreateNewAccessCode = () => {
@@ -28,38 +29,6 @@ const ValidateAccessCode = async (phone, code) => {
     }
 };
 
-// Mock API: GeneratePostCaptions
-const GeneratePostCaptions = async (socialNetwork, subject, tone) => {
-    return [
-        `Mock caption 1 for ${socialNetwork} about ${subject} in ${tone} tone.`,
-        `Mock caption 2 for ${socialNetwork} about ${subject} in ${tone} tone.`,
-        `Mock caption 3 for ${socialNetwork} about ${subject} in ${tone} tone.`,
-        `Mock caption 4 for ${socialNetwork} about ${subject} in ${tone} tone.`,
-        `Mock caption 5 for ${socialNetwork} about ${subject} in ${tone} tone.`
-    ];
-};
-
-// Mock API: GetPostIdeas
-const GetPostIdeas = async (topic) => {
-    return [
-        `Idea 1: Share a story about ${topic}.`,
-        `Idea 2: Create a poll about ${topic}.`,
-        `Idea 3: Post a tutorial on ${topic}.`,
-        `Idea 4: Highlight benefits of ${topic}.`,
-        `Idea 5: Share a quote related to ${topic}.`
-    ];
-};
-
-// Mock API: CreateCaptionsFromIdeas
-const CreateCaptionsFromIdeas = async (idea) => {
-    return [
-        `Caption 1 based on: ${idea}`,
-        `Caption 2 based on: ${idea}`,
-        `Caption 3 based on: ${idea}`,
-        `Caption 4 based on: ${idea}`,
-        `Caption 5 based on: ${idea}`
-    ];
-};
 
 // Send OTP (mock)
 router.post('/send-otp', async (req, res, next) => {
@@ -122,7 +91,7 @@ router.post('/generate-post-captions', async (req, res, next) => {
 
 // Get Post Ideas
 router.post('/get-post-ideas', async (req, res, next) => {
-    const { topic } = req.body;
+    const { topic } = req.query;
     if (!topic) {
         return next(createError(400, 'Missing topic'));
     }
@@ -152,16 +121,16 @@ router.post('/create-captions-from-ideas', async (req, res, next) => {
 
 // Save Generated Content
 router.post('/save-generated-content', async (req, res, next) => {
-    const { topic, data, phoneNumber } = req.body;
-    if (!topic || !data || !phoneNumber) {
-        return next(createError(400, 'Missing topic, data, or phoneNumber'));
+    const { topic, data, phone } = req.body;
+    if (!topic || !data || !phone) {
+        return next(createError(400, 'Missing topic, data, or phone number'));
     }
     try {
         const id = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         await setDoc(doc(db, 'generated_contents', id), {
             topic,
             data,
-            phoneNumber,
+            phone,
             createdAt: new Date().toISOString()
         });
         res.status(200).json({ success: true });
@@ -172,12 +141,12 @@ router.post('/save-generated-content', async (req, res, next) => {
 });
 
 router.get('/get-user-generated-contents', async (req, res, next) => {
-    const { phone_number } = req.query;
-    if (!phone_number) {
+    const { phone } = req.query;
+    if (!phone) {
         return next(createError(400, 'Missing phone number'));
     }
     try {
-        const formattedPhone = `+84${phone_number.replace(/^0/, '')}`;
+        const formattedPhone = `+84${phone.replace(/^0/, '')}`;
         const q = query(collection(db, 'generated_contents'), where('phoneNumber', '==', formattedPhone));
         const querySnapshot = await getDocs(q);
         const contents = [];

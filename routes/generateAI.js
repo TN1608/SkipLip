@@ -6,11 +6,10 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // Hàm tạo caption
 const GeneratePostCaptions = async (socialNetwork, subject, tone) => {
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const prompt = `Tạo 5 caption cho bài đăng trên ${socialNetwork} về chủ đề "${subject}" với giọng điệu ${tone}. Mỗi caption tối đa 280 ký tự, phù hợp với nền tảng.`;
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const prompt = `Create 5 captions for a post on ${socialNetwork} about "${subject}" with a ${tone} tone. Each caption should be a maximum of 280 characters and suitable for the platform.`;
         const result = await model.generateContent(prompt);
-        const captions = result.response.text().split('\n').filter(c => c.trim()).slice(0, 5);
-        return captions;
+        return result.response.text().split('\n').filter(c => c.trim()).slice(0, 5);
     } catch (error) {
         throw new Error(`Failed to generate captions: ${error.message}`);
     }
@@ -19,11 +18,10 @@ const GeneratePostCaptions = async (socialNetwork, subject, tone) => {
 // Hàm tạo ý tưởng
 const GetPostIdeas = async (topic) => {
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const prompt = `Tạo 5 ý tưởng bài đăng về chủ đề "${topic}" cho mạng xã hội. Mỗi ý tưởng ngắn gọn, tối đa 100 ký tự.`;
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const prompt = `Generate 5 post ideas about "${topic}" for social media. Each idea should be concise and a maximum of 100 characters.`;
         const result = await model.generateContent(prompt);
-        const ideas = result.response.text().split('\n').filter(i => i.trim()).slice(0, 5);
-        return ideas;
+        return result.response.text().split('\n').filter(i => i.trim()).slice(0, 5);
     } catch (error) {
         throw new Error(`Failed to generate ideas: ${error.message}`);
     }
@@ -32,12 +30,18 @@ const GetPostIdeas = async (topic) => {
 // Hàm tạo caption từ ý tưởng
 const CreateCaptionsFromIdeas = async (idea) => {
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const prompt = `Tạo 5 caption dựa trên ý tưởng bài đăng: "${idea}". Mỗi caption tối đa 280 ký tự, phù hợp với mạng xã hội.`;
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const prompt = `Create 5 captions based on the post idea: "${idea}". Each caption should be a maximum of 280 characters and suitable for social media.`;
         const result = await model.generateContent(prompt);
-        const captions = result.response.text().split('\n').filter(c => c.trim()).slice(0, 5);
-        return captions;
+        return result.response.text().split('\n').filter(c => c.trim()).slice(0, 5);
     } catch (error) {
         throw new Error(`Failed to generate captions from idea: ${error.message}`);
     }
+};
+
+// Export các hàm
+module.exports = {
+    GeneratePostCaptions,
+    GetPostIdeas,
+    CreateCaptionsFromIdeas
 };
