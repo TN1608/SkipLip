@@ -10,36 +10,52 @@ import {Content, Footer, Header} from "antd/es/layout/layout.js";
 import BreadcrumbItem from "antd/es/breadcrumb/BreadcrumbItem.js";
 
 export const App = () => {
-    // Add authentication state
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [currentUserPhone, setCurrentUserPhone] = useState(null);
 
     const menuItems = [
         {
             label: 'Services',
             key: '1',
-            icon: <RiCustomerService2Fill color={'yellow'}/>,
-            content: <ServiceSection/>
+            icon: <RiCustomerService2Fill color={'yellow'} />,
+            content: <ServiceSection currentUserPhone={currentUserPhone} />
         },
         {
             label: 'Profile',
             key: '2',
-            icon: <FaUser color={'green'}/>,
-            content: <ProfileSection/>
+            icon: <FaUser color={'green'} />,
+            content: <ProfileSection currentUserPhone={currentUserPhone} />
         }
-    ]
+    ];
+
+
 
     const [selectedContent, setSelectedContent] = useState(menuItems[0].content);
     const [selectedLabel, setSelectedLabel] = useState(menuItems[0].label);
 
-    // Function to handle successful authentication
-    const handleAuthSuccess = () => {
+    const handleAuthSuccess = (phone) => {
         setIsAuthenticated(true);
+        setCurrentUserPhone(phone);
+        setSelectedContent(menuItems[0].content);
+        setSelectedLabel(menuItems[0].label);
     };
 
     const handleMenuSelect = (key) => {
-        const selectedItem = menuItems.flatMap((item) => item.children || item).find((item) => item.key === key);
-        setSelectedContent(selectedItem ? selectedItem.content : 'Content not found');
-        setSelectedLabel(selectedItem ? selectedItem.label : 'Label not found');
+        const selectedItem = menuItems.find((item) => item.key === key);
+        if (selectedItem) {
+            setSelectedContent(selectedItem.content);
+            setSelectedLabel(selectedItem.label);
+        } else {
+            // Fallback for nested items if you add them later
+            const nestedItem = menuItems.flatMap((item) => item.children || []).find(subItem => subItem.key === key);
+            if (nestedItem) {
+                setSelectedContent(nestedItem.content);
+                setSelectedLabel(nestedItem.label);
+            } else {
+                setSelectedContent('Content not found');
+                setSelectedLabel('Label not found');
+            }
+        }
     };
 
     const header = (
@@ -70,7 +86,7 @@ export const App = () => {
                                 <BreadcrumbItem>Home</BreadcrumbItem>
                                 <BreadcrumbItem>{selectedLabel}</BreadcrumbItem>
                             </Breadcrumb>
-                            <div className={""}>
+                            <div className={"bg-white p-6 min-h-full"}>
                                 {selectedContent}
                             </div>
                         </Content>

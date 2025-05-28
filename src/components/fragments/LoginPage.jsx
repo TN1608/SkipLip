@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Divider, Form, message } from "antd";
+import {Divider, Form, Input, message} from "antd";
 import { motion } from "framer-motion";
-import authServices from "@/api/auth.js";
+import authServices from "@/api/AuthServices.js";
 
 export const LoginPage = ({ onAuthSuccess }) => {
     const [step, setStep] = useState(1);
@@ -16,7 +16,7 @@ export const LoginPage = ({ onAuthSuccess }) => {
             const response = await authServices.sendOTP(phoneNumber);
             console.log('OTP sent successfully:', response);
             message.success(response.message);
-            setStep(2); // Chuyển sang bước xác minh OTP
+            setStep(2);
         }catch (error) {
             console.error('Error sending OTP:', error);
             message.error('Failed to send OTP. Please try again.');
@@ -27,15 +27,13 @@ export const LoginPage = ({ onAuthSuccess }) => {
         }
     };
 
-    // Hàm xác minh OTP
     const verifyOTP = async (otpCode) => {
         try {
             setLoading(true);
             const response = await authServices.verifyOTP(phone, otpCode);
             message.success(response.message);
-            // Call onAuthSuccess to notify parent component that authentication was successful
             if (onAuthSuccess) {
-                onAuthSuccess();
+                onAuthSuccess(phone);
             }
         } catch (error) {
             console.error('Error verifying OTP:', error);
@@ -97,7 +95,7 @@ export const LoginPage = ({ onAuthSuccess }) => {
                                         { pattern: /^\d{9,10}$/, message: 'Phone number must be 9 or 10 digits!' }
                                     ]}
                                 >
-                                    <input
+                                    <Input
                                         type="tel"
                                         placeholder="Enter your phone number"
                                         className="w-full p-2 border rounded"
@@ -112,11 +110,11 @@ export const LoginPage = ({ onAuthSuccess }) => {
                                     name="otp"
                                     rules={[{ required: true, message: 'Please enter the OTP code!' }]}
                                 >
-                                    <input
-                                        type="text"
+                                    <Input.OTP
                                         placeholder="Enter the OTP code"
                                         className="w-full p-2 border rounded"
-                                        onChange={(e) => setOtp(e.target.value)}
+                                        onChange={(e) => setOtp(e.target.value.replace(/[^\d]/g, ''))}
+                                        maxLength={6}
                                     />
                                 </Form.Item>
                             )}

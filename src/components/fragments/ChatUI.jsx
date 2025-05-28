@@ -1,336 +1,361 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Input, Card, List, message, Divider, Spin, Modal } from 'antd';
-import { motion } from 'framer-motion';
-import { FaSave, FaShareAlt, FaArrowRight } from 'react-icons/fa';
-import axios from 'axios';
+import {useState, useEffect, useRef} from "react";
+import {
+    Input,
+    Button,
+    Card,
+    Avatar,
+    Space,
+    Select,
+    Typography,
+    message,
+    Spin,
+    Tag,
+    Tooltip,
+    Dropdown,
+    Menu
+} from "antd";
+import {
+    UserOutlined,
+    RobotOutlined,
+    ArrowLeftOutlined,
+    SaveOutlined,
+    ShareAltOutlined,
+    FacebookFilled, TwitterOutlined, InstagramOutlined, MailOutlined
+} from '@ant-design/icons';
+import {motion, AnimatePresence} from "framer-motion";
+import AIServices from "@/api/AIServices.js";
+import AuthServices from "@/api/AuthServices.js";
 
-// Animation variants
-const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-        opacity: 1,
-        transition: { staggerChildren: 0.2 }
-    }
-};
+const {Paragraph, Text} = Typography;
+const {Option} = Select;
 
-const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { type: 'spring', stiffness: 100 } }
-};
+const socialNetworks = ["Facebook", "Instagram", "Twitter"];
+const tones = ["Friendly", "Luxury", "Relaxed", "Professional", "Bold", "Adventurous", "Witty", "Persuasive", "Empathetic"];
 
-const ChatUI = ({ phoneNumber, serviceType }) => {
-    const [step, setStep] = useState(1);
-    const [socialNetwork, setSocialNetwork] = useState('');
-    const [topic, setTopic] = useState('');
-    const [tone, setTone] = useState('');
-    const [ideas, setIdeas] = useState([]);
-    const [selectedIdea, setSelectedIdea] = useState('');
-    const [captions, setCaptions] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [savedContents, setSavedContents] = useState([]);
+export const ChatUI = ({mode, initialIdea, onBack, currentUserPhone}) => {
+    const [messages, setMessages] = useState([]);
+    const [userInput, setUserInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [currentStage, setCurrentStage] = useState(''); // e.g., 'ask_social', 'ask_topic', 'ask_tone', 'show_captions'
+    const [formData, setFormData] = useState({
+        socialNetwork: '',
+        subject: '',
+        tone: '',
+        idea: initialIdea || ''
+    });
+    const [generatedCaptions, setGeneratedCaptions] = useState([]);
+    const messagesEndRef = useRef(null);
 
-    // Tones for "Start from Scratch"
-    const tones = [
-        'Friendly', 'Luxury', 'Relaxed', 'Professional', 'Bold',
-        'Adventurous', 'Witty', 'Persuasive', 'Empathetic'
-    ];
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({behavior: "smooth"});
+    };
 
-    // Load saved contents on mount
+    useEffect(scrollToBottom, [messages, generatedCaptions]);
+
     useEffect(() => {
-        if (phoneNumber) {
-            fetchSavedContents();
-        }
-    }, [phoneNumber]);
+        // Initial setup based on mode
+        setMessages([]);
+        setGeneratedCaptions([]);
+        setFormData({socialNetwork: '', subject: '', tone: '', idea: initialIdea || ''});
 
-    // Fetch saved contents
-    const fetchSavedContents = async () => {
+        if (mode === 'scratch') {
+            addAiMessage("Let's create some captions! Which social media platform are you targeting?", 'options', socialNetworks.map(n => ({
+                value: n,
+                label: n
+            })));
+            setCurrentStage('ask_social');
+        } else if (mode === 'from_idea' && initialIdea) {
+            addAiMessage(`Great! Let's create captions based on the idea: "${initialIdea}". Generating now...`);
+            setCurrentStage('generate_from_idea');
+
+            const fetchCaptions = async () => {
+                setIsLoading(true);
+                try {
+                    const captions = await AIServices.createCaptionsFromIdeas(initialIdea);
+                    setGeneratedCaptions(captions.map(cap => ({
+                        id: Date.now() + Math.random(),
+                        text: cap,
+                        isSaved: false
+                    })));
+                    addAiMessage("Here are some captions based on your idea:", "captions_display");
+                    setCurrentStage('show_captions');
+                } catch (error) {
+                    message.error("Failed to generate captions from idea.");
+                    addAiMessage("Sorry, I couldn't generate captions for that idea. Would you like to try again or start from scratch?", "error");
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            fetchCaptions();
+        }
+    }, [mode, initialIdea]);
+
+    const addMessage = (text, sender, type = 'text', options = []) => {
+        setMessages(prev => [...prev, {id: Date.now(), text, sender, type, options}]);
+    };
+
+    const addAiMessage = (text, type = 'text', options = []) => addMessage(text, 'ai', type, options);
+    const addUserMessage = (text) => addMessage(text, 'user');
+
+    const handleUserInput = async (value) => {
+        const inputText = value.trim();
+        if (!inputText && currentStage !== 'select_option') return;
+
+        let nextStage = currentStage;
+        let aiResponseText = "";
+        let aiResponseType = 'text';
+        let aiOptions = [];
+
+        if (currentStage !== 'select_option') {
+            addUserMessage(inputText);
+        }
+        setUserInput('');
+        setIsLoading(true);
+
+        let finalTone;
+
         try {
-            const response = await axios.get('/api/auth/get-user-generated-contents', {
-                params: { phone_number: phoneNumber }
-            });
-            setSavedContents(response.data);
+            if (currentStage === 'ask_social') {
+                setFormData(prev => ({...prev, socialNetwork: inputText}));
+                aiResponseText = `Got it, ${inputText}! Now, what topic do you want a caption for?`;
+                nextStage = 'ask_topic';
+            } else if (currentStage === 'ask_topic') {
+                setFormData(prev => ({...prev, subject: inputText}));
+                aiResponseText = `Interesting topic: "${inputText}"! What should your caption sound like?`;
+                aiResponseType = 'options';
+                aiOptions = tones.map(t => ({value: t, label: t}));
+                nextStage = 'ask_tone';
+            } else if (currentStage === 'ask_tone') {
+                finalTone = inputText.trim();
+                setFormData(prev => ({...prev, tone: finalTone}));
+                aiResponseText = `Perfect! Generating ${finalTone} captions for ${formData.socialNetwork} about "${formData.subject}"...`;
+                nextStage = 'generate_scratch';
+            }
+
+            if (nextStage === 'generate_scratch') {
+                addAiMessage(aiResponseText);
+                const body = {
+                    socialNetwork: formData.socialNetwork,
+                    subject: formData.subject,
+                    tone: (currentStage === 'ask_tone' && finalTone ? finalTone : formData.tone),
+                }
+                const captions = await AIServices.generatePostCaptions(body);
+                setGeneratedCaptions(captions.map(cap => ({
+                    id: Date.now() + Math.random(),
+                    text: cap,
+                    isSaved: false
+                })));
+                addAiMessage("Here are your generated captions:", "captions_display");
+                nextStage = 'show_captions';
+            } else if (aiResponseText) {
+                addAiMessage(aiResponseText, aiResponseType, aiOptions);
+            }
+            setCurrentStage(nextStage);
+
         } catch (error) {
-            message.error('Failed to load saved contents');
+            console.error("ChatUI Error:", error);
+            addAiMessage("Oops! Something went wrong. Please try again.");
+            message.error("An error occurred.");
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    // Handle social media selection
-    const handleSocialMediaSelect = (platform) => {
-        setSocialNetwork(platform);
-        setStep(2);
+    const handleOptionSelect = (optionValue) => {
+        // addUserMessage(`Selected: ${optionValue}`);
+        setUserInput(optionValue); // Set the input to the selected option
+        setCurrentStage('select_option');
+        handleUserInput(optionValue);
     };
 
-    // Handle topic submission
-    const handleTopicSubmit = async () => {
-        if (!topic) {
-            message.error('Please enter a topic');
+
+    const handleSaveCaption = async (captionIndex, captionText) => {
+        if (!currentUserPhone) {
+            message.error("You need to be logged in to save captions.");
             return;
         }
-        if (serviceType === 'start-from-scratch') {
-            setStep(3);
-        } else if (serviceType === 'get-inspired') {
-            setLoading(true);
-            try {
-                const response = await axios.post('/api/auth/get-post-ideas', { topic });
-                setIdeas(response.data);
-                setStep(4);
-            } catch (error) {
-                message.error('Failed to generate ideas');
+
+        try {
+            const topicForSave = formData.subject || formData.idea || "General Caption";
+            const body = {
+                topic: topicForSave,
+                data: captionText,
+                phone: currentUserPhone
             }
-            setLoading(false);
-        }
-    };
-
-    // Handle tone selection
-    const handleToneSelect = async (selectedTone) => {
-        setTone(selectedTone);
-        setLoading(true);
-        try {
-            const response = await axios.post('/api/auth/generate-post-captions', {
-                socialNetwork,
-                subject: topic,
-                tone: selectedTone
-            });
-            setCaptions(response.data);
-            setStep(4);
+            await AuthServices.saveGeneratedContent(body);
+            message.success("Caption saved!");
+            setGeneratedCaptions(prev => prev.map((cap, idx) => idx === captionIndex ? {...cap, isSaved: true} : cap));
         } catch (error) {
-            message.error('Failed to generate captions');
-        }
-        setLoading(false);
-    };
-
-    // Handle idea selection
-    const handleIdeaSelect = async (idea) => {
-        setSelectedIdea(idea);
-        setLoading(true);
-        try {
-            const response = await axios.post('/api/auth/create-captions-from-ideas', { idea });
-            setCaptions(response.data);
-            setStep(5);
-        } catch (error) {
-            message.error('Failed to generate captions');
-        }
-        setLoading(false);
-    };
-
-    // Handle save caption
-    const handleSave = async (caption) => {
-        try {
-            await axios.post('/api/auth/save-generated-content', {
-                topic: serviceType === 'start-from-scratch' ? `${socialNetwork} - ${topic}` : selectedIdea,
-                data: caption,
-                phoneNumber
-            });
-            message.success('Caption saved successfully');
-            fetchSavedContents();
-        } catch (error) {
-            message.error('Failed to save caption');
+            message.error("Failed to save caption.");
         }
     };
 
-    // Handle share caption
-    const handleShare = (caption) => {
-        Modal.info({
-            title: 'Share Caption',
-            content: (
-                <div>
-                    <p>{caption}</p>
-                    <p>Copy the caption above or share it directly on your preferred platform!</p>
-                </div>
-            ),
-            onOk() {}
-        });
-    };
-
-    // Handle unsave caption
-    const handleUnsave = async (captionId) => {
-        try {
-            await axios.post('/api/auth/unsave-content', { captionId });
-            message.success('Caption unsaved successfully');
-            fetchSavedContents();
-        } catch (error) {
-            message.error('Failed to unsave caption');
+    const handleShareMenuClick = (captionText, {key}) => {
+        const encodedText = encodeURIComponent(captionText);
+        let shareUrl = '';
+        switch (key) {
+            case 'facebook':
+                shareUrl = `https://www.facebook.com/sharer/sharer.php?u=&quote=${encodedText}`;
+                window.open(shareUrl, '_blank');
+                break;
+            case 'twitter':
+                shareUrl = `https://twitter.com/intent/tweet?text=${encodedText}`;
+                window.open(shareUrl, '_blank');
+                break;
+            case 'instagram':
+                navigator.clipboard.writeText(captionText)
+                    .then(() => message.success("Caption copied! Paste it into your Instagram post."))
+                    .catch(() => message.error("Failed to copy caption."));
+                break;
+            case 'email':
+                shareUrl = `mailto:?subject=Check%20out%20this%20caption&body=${encodedText}`;
+                window.open(shareUrl, '_self');
+                break;
+            default:
+                break;
         }
     };
+
+    const getShareMenu = (captionText) => (
+        <Menu
+            onClick={(info) => handleShareMenuClick(captionText, info)}
+            items={[
+                {
+                    key: 'facebook',
+                    icon: <FacebookFilled style={{color: '#1877f3'}}/>,
+                    label: 'Share on Facebook',
+                    type: 'item',
+                },
+                {
+                    key: 'twitter',
+                    icon: <TwitterOutlined style={{color: '#1da1f2'}}/>,
+                    label: 'Share on Twitter',
+                    type: 'item',
+                },
+                {
+                    key: 'instagram',
+                    icon: <InstagramOutlined style={{color: '#e4405f'}}/>,
+                    label: 'Copy for Instagram',
+                    type: 'item',
+                },
+                {
+                    key: 'email',
+                    icon: <MailOutlined/>,
+                    label: 'Share via Email',
+                    type: 'item',
+                },
+            ]}
+        />
+    );
 
     return (
-        <div className="bg-gradient-to-b from-gray-100 to-gray-200 min-h-screen py-10 px-4">
-            <motion.div
-                className="container mx-auto max-w-3xl"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-            >
-                <motion.h2
-                    className="text-3xl font-bold mb-8 text-center text-gray-800"
-                    variants={itemVariants}
-                >
-                    {serviceType === 'start-from-scratch' ? 'Create Your Caption' : 'Get Inspired'}
-                </motion.h2>
+        <div
+            className="flex flex-col h-[calc(100vh-220px)] md:h-[calc(100vh-200px)] max-w-3xl mx-auto bg-white shadow-lg rounded-lg">
+            <div className="p-4 border-b flex items-center">
+                <Button icon={<ArrowLeftOutlined/>} onClick={onBack} className="mr-4">Back</Button>
+                <RobotOutlined className="mr-2 text-xl text-blue-500"/>
+                <Text strong>Skipli AI Caption Generator</Text>
+            </div>
 
-                {loading ? (
-                    <div className="text-center">
-                        <Spin size="large" />
-                    </div>
-                ) : (
-                    <>
-                        {step === 1 && serviceType === 'start-from-scratch' && (
-                            <motion.div variants={itemVariants}>
-                                <p className="text-lg mb-4 text-center">
-                                    Which social media platform would you like to create a caption for?
-                                </p>
-                                <div className="flex justify-center gap-4">
-                                    {['Facebook', 'Instagram', 'Twitter'].map((platform) => (
-                                        <Button
-                                            key={platform}
-                                            type="primary"
-                                            size="large"
-                                            onClick={() => handleSocialMediaSelect(platform)}
-                                            className="bg-blue-600 hover:bg-blue-700"
-                                        >
-                                            {platform}
-                                        </Button>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        )}
+            <div className="flex-grow p-4 overflow-y-auto space-y-4 bg-gray-50">
+                <AnimatePresence>
+                    {messages.map((msg) => (
+                        <motion.div
+                            key={msg.id}
+                            initial={{opacity: 0, y: 10}}
+                            animate={{opacity: 1, y: 0}}
+                            exit={{opacity: 0}}
+                            className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                            <Card
+                                size="small"
+                                className={`max-w-xs md:max-w-md lg:max-w-lg shadow ${msg.sender === 'user' ? 'bg-blue-500 text-white' : 'bg-white'}`}
+                            >
+                                {msg.sender === 'ai' && <Avatar size="small" icon={<RobotOutlined/>}
+                                                                className="mr-2 bg-blue-100 text-blue-600"/>}
+                                {msg.sender === 'user' && <Avatar size="small" icon={<UserOutlined/>}
+                                                                  className="mr-2 bg-gray-100 text-gray-600"/>}
+                                <Paragraph
+                                    className={msg.sender === 'user' ? 'text-white mb-0' : 'mb-0'}>{msg.text}</Paragraph>
+                                {msg.type === 'options' && msg.sender === 'ai' && (
+                                    <Space wrap className="mt-2">
+                                        {msg.options.map(opt => (
+                                            <Button key={opt.value} size="small"
+                                                    onClick={() => handleOptionSelect(opt.value)}>{opt.label}</Button>
+                                        ))}
+                                    </Space>
+                                )}
+                            </Card>
+                        </motion.div>
+                    ))}
+                </AnimatePresence>
 
-                        {(step === 2 || (step === 1 && serviceType === 'get-inspired')) && (
-                            <motion.div variants={itemVariants}>
-                                <p className="text-lg mb-4 text-center">
-                                    {serviceType === 'start-from-scratch'
-                                        ? `What topic do you want a caption for on ${socialNetwork}?`
-                                        : 'What topic do you want ideas for?'}
-                                </p>
-                                <Input
-                                    placeholder="Enter your topic"
-                                    value={topic}
-                                    onChange={(e) => setTopic(e.target.value)}
-                                    className="mb-4"
-                                    size="large"
-                                />
-                                <div className="text-center">
-                                    <Button
-                                        type="primary"
-                                        size="large"
-                                        onClick={handleTopicSubmit}
-                                        className="bg-blue-600 hover:bg-blue-700"
-                                    >
-                                        Submit <FaArrowRight className="ml-2" />
-                                    </Button>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {step === 3 && serviceType === 'start-from-scratch' && (
-                            <motion.div variants={itemVariants}>
-                                <p className="text-lg mb-4 text-center">
-                                    What should your caption sound like?
-                                </p>
-                                <div className="flex flex-wrap justify-center gap-4">
-                                    {tones.map((toneOption) => (
-                                        <Button
-                                            key={toneOption}
-                                            type={tone === toneOption ? 'primary' : 'default'}
-                                            onClick={() => handleToneSelect(toneOption)}
-                                            className={tone === toneOption ? 'bg-blue-600' : 'bg-gray-200 text-black'}
-                                        >
-                                            {toneOption}
-                                        </Button>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {step === 4 && serviceType === 'get-inspired' && (
-                            <motion.div variants={itemVariants}>
-                                <p className="text-lg mb-4 text-center">Select an idea:</p>
-                                <List
-                                    dataSource={ideas}
-                                    renderItem={(idea) => (
-                                        <List.Item>
-                                            <Card
-                                                hoverable
-                                                onClick={() => handleIdeaSelect(idea)}
-                                                className="w-full"
+                {generatedCaptions.length > 0 && currentStage === 'show_captions' && (
+                    <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="flex flex-col gap-4">
+                        {generatedCaptions.map((caption, index) => (
+                            <Card key={caption.id} className="mb-0 shadow-sm hover:shadow-md transition-shadow"
+                                  size="small">
+                                <Paragraph className="mb-2">{caption.text}</Paragraph>
+                                {index !== 0 && (
+                                    <Space>
+                                        <Tooltip title="Save Caption">
+                                            <Button
+                                                icon={<SaveOutlined/>}
+                                                onClick={() => handleSaveCaption(index, caption.text)}
+                                                disabled={caption.isSaved}
                                             >
-                                                {idea}
-                                            </Card>
-                                        </List.Item>
-                                    )}
-                                />
-                            </motion.div>
-                        )}
+                                                {caption.isSaved ? 'Saved' : 'Save'}
+                                            </Button>
+                                        </Tooltip>
+                                        <Tooltip title="Share">
+                                            <Dropdown overlay={getShareMenu(caption.text)} trigger={['click']}>
+                                                <Button icon={<ShareAltOutlined/>}>Share</Button>
+                                            </Dropdown>
+                                        </Tooltip>
+                                    </Space>
+                                )}
+                            </Card>
+                        ))}
+                        <Button type="dashed" onClick={onBack} className="mt-4">Create another caption</Button>
+                    </motion.div>)}
+                <div ref={messagesEndRef}/>
+            </div>
 
-                        {(step === 4 && serviceType === 'start-from-scratch') || (step === 5 && serviceType === 'get-inspired') ? (
-                            <motion.div variants={itemVariants}>
-                                <p className="text-lg mb-4 text-center">Generated Captions:</p>
-                                <List
-                                    grid={{ gutter: 16, column: 1 }}
-                                    dataSource={captions}
-                                    renderItem={(caption, index) => (
-                                        <List.Item>
-                                            <Card
-                                                title={`Caption ${index + 1}`}
-                                                extra={
-                                                    <div className="flex gap-2">
-                                                        <Button
-                                                            type="link"
-                                                            onClick={() => handleSave(caption)}
-                                                            icon={<FaSave />}
-                                                        >
-                                                            Save
-                                                        </Button>
-                                                        <Button
-                                                            type="link"
-                                                            onClick={() => handleShare(caption)}
-                                                            icon={<FaShareAlt />}
-                                                        >
-                                                            Share
-                                                        </Button>
-                                                    </div>
-                                                }
-                                            >
-                                                {caption}
-                                            </Card>
-                                        </List.Item>
-                                    )}
-                                />
-                            </motion.div>
-                        ) : null}
-
-                        {savedContents.length > 0 && (
-                            <motion.div variants={itemVariants} className="mt-12">
-                                <Divider>Saved Contents</Divider>
-                                <List
-                                    grid={{ gutter: 16, column: 1 }}
-                                    dataSource={savedContents}
-                                    renderItem={(item) => (
-                                        <List.Item>
-                                            <Card
-                                                title={item.topic}
-                                                extra={
-                                                    <Button
-                                                        type="link"
-                                                        onClick={() => handleUnsave(item.id)}
-                                                        className="text-red-500"
-                                                    >
-                                                        Unsave
-                                                    </Button>
-                                                }
-                                            >
-                                                {item.data}
-                                            </Card>
-                                        </List.Item>
-                                    )}
-                                />
-                            </motion.div>
-                        )}
-                    </>
-                )}
-            </motion.div>
+            {currentStage !== 'show_captions' && currentStage !== 'generate_from_idea' && currentStage !== 'generate_scratch' && (
+                <div className="p-4 border-t">
+                    {isLoading && <div className="text-center mb-2"><Spin/> Thinking...</div>}
+                    <Input.Search
+                        placeholder={
+                            currentStage === 'ask_social' ? "e.g., Facebook, Instagram..." :
+                                currentStage === 'ask_topic' ? "e.g., Summer vacation, New product launch..." :
+                                    currentStage === 'ask_tone' ? "Type or select a tone..." :
+                                        "Type your message..."
+                        }
+                        enterButton="Send"
+                        size="large"
+                        value={userInput}
+                        onChange={(e) => setUserInput(e.target.value)}
+                        onSearch={() => {
+                            if (userInput.trim()) handleUserInput(userInput);
+                        }}
+                        loading={isLoading}
+                        disabled={isLoading}
+                    />
+                    {currentStage === 'ask_tone' && messages.some(m => m.type === 'options' && m.sender === 'ai') && (
+                        <div className="mt-2">
+                            <Text type="secondary">Or select a tone: </Text>
+                            <Select
+                                style={{width: '100%'}}
+                                placeholder="Choose a tone"
+                                onChange={handleOptionSelect}
+                                disabled={isLoading}
+                            >
+                                {tones.map(tone => <Option key={tone} value={tone}>{tone}</Option>)}
+                            </Select>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
-
-export default ChatUI;
