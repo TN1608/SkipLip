@@ -73,6 +73,33 @@ router.post('/verify-otp', async (req, res, next) => {
     }
 });
 
+async function SaveGeneratedContent(topic, data, phone) {
+    const id = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    await setDoc(doc(db, 'generated_contents', id), {
+        topic,
+        data,
+        phone,
+        createdAt: new Date().toISOString()
+    });
+    return id;
+}
+
+async function GetUserGeneratedContents(phone) {
+    const formattedPhone = `+84${phone.replace(/^0/, '')}`;
+    const q = query(collection(db, 'generated_contents'), where('phone', '==', formattedPhone));
+    const querySnapshot = await getDocs(q);
+    const contents = [];
+    querySnapshot.forEach((doc) => {
+        contents.push({ id: doc.id, ...doc.data() });
+    });
+    return contents;
+}
+
+async function UnsaveContent(captionId) {
+    await deleteDoc(doc(db, 'generated_contents', captionId));
+    return { success: true };
+}
+
 
 // Generate Post Captions
 router.post('/generate-post-captions', async (req, res, next) => {
@@ -126,14 +153,9 @@ router.post('/save-generated-content', async (req, res, next) => {
         return next(createError(400, 'Missing topic, data, or phone number'));
     }
     try {
-        const id = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        await setDoc(doc(db, 'generated_contents', id), {
-            topic,
-            data,
-            phone,
-            createdAt: new Date().toISOString()
-        });
-        res.status(200).json({ success: true });
+        const formattedPhone = `+84${phone.replace(/^0/, '')}`;
+        const contentId = await SaveGeneratedContent(topic, data, formattedPhone);
+        res.status(200).json({ success: true, contentId });
     } catch (error) {
         console.error('Error saving content:', error.message);
         next(createError(500, `Failed to save content: ${error.message}`));
@@ -147,12 +169,7 @@ router.get('/get-user-generated-contents', async (req, res, next) => {
     }
     try {
         const formattedPhone = `+84${phone.replace(/^0/, '')}`;
-        const q = query(collection(db, 'generated_contents'), where('phoneNumber', '==', formattedPhone));
-        const querySnapshot = await getDocs(q);
-        const contents = [];
-        querySnapshot.forEach((doc) => {
-            contents.push({ id: doc.id, ...doc.data() });
-        });
+        const contents = await GetUserGeneratedContents(formattedPhone);
         res.status(200).json(contents);
     } catch (error) {
         console.error('Error fetching contents:', error.message);
@@ -167,7 +184,7 @@ router.post('/unsave-content', async (req, res, next) => {
         return next(createError(400, 'Missing caption ID'));
     }
     try {
-        await deleteDoc(doc(db, 'generated_contents', captionId));
+        await UnsaveContent(captionId);
         res.status(200).json({ success: true });
     } catch (error) {
         console.error('Error unsaving content:', error.message);
