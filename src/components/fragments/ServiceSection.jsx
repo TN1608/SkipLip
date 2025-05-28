@@ -1,7 +1,7 @@
 import {useState} from "react";
 import {Button, Input, Card, Typography, Space, message, Spin} from "antd";
 import {motion} from "framer-motion";
-import AIServices from "@/api/AIServices.js";
+import AIServices from "@/services/AIServices.js";
 import {ChatUI} from "@fragments/ChatUI.jsx";
 
 const {Title, Paragraph} = Typography;

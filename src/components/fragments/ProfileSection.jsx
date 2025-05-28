@@ -9,7 +9,7 @@ import {
     TwitterOutlined
 } from '@ant-design/icons';
 import { motion } from 'framer-motion';
-import AuthServices from "@/api/AuthServices.js";
+import AuthServices from "@/services/AuthServices.js";
 
 const { Title, Paragraph, Text } = Typography;
 

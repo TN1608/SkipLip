@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {Divider, Form, Input, message} from "antd";
 import { motion } from "framer-motion";
-import authServices from "@/api/AuthServices.js";
+import authServices from "@/services/AuthServices.js";
 
 export const LoginPage = ({ onAuthSuccess }) => {
     const [step, setStep] = useState(1);

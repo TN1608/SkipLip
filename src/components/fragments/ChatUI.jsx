@@ -23,8 +23,8 @@ import {
     FacebookFilled, TwitterOutlined, InstagramOutlined, MailOutlined
 } from '@ant-design/icons';
 import {motion, AnimatePresence} from "framer-motion";
-import AIServices from "@/api/AIServices.js";
-import AuthServices from "@/api/AuthServices.js";
+import AIServices from "@/services/AIServices.js";
+import AuthServices from "@/services/AuthServices.js";
 
 const {Paragraph, Text} = Typography;
 const {Option} = Select;
