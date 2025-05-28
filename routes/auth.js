@@ -168,8 +168,7 @@ router.get('/get-user-generated-contents', async (req, res, next) => {
         return next(createError(400, 'Missing phone number'));
     }
     try {
-        const formattedPhone = `+84${phone.replace(/^0/, '')}`;
-        const contents = await GetUserGeneratedContents(formattedPhone);
+        const contents = await GetUserGeneratedContents(phone);
         res.status(200).json(contents);
     } catch (error) {
         console.error('Error fetching contents:', error.message);
@@ -179,7 +178,7 @@ router.get('/get-user-generated-contents', async (req, res, next) => {
 
 // Unsave Content
 router.post('/unsave-content', async (req, res, next) => {
-    const { captionId } = req.body;
+    const { captionId } = req.query;
     if (!captionId) {
         return next(createError(400, 'Missing caption ID'));
     }
