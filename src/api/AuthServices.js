@@ -18,8 +18,8 @@ const authServices = {
     sendOTP: async (phone) => {
         try {
             const response = await axiosConfig.post('/api/send-otp', {
-                    phone: phone,
-                });
+                phone: phone,
+            });
             return response.data;
         } catch (error) {
             console.error('Error sending OTP:', error.message);
@@ -41,8 +41,8 @@ const authServices = {
     },
     getUserGeneratedContents: async (phone) => {
         try {
-            const response = await axiosConfig.get('/api/get-user-generated-contents', {}, {
-                params: phone,
+            const response = await axiosConfig.get('/api/get-user-generated-contents', {
+                params: {phone},
             });
             return response.data;
         } catch (error) {
@@ -62,8 +62,8 @@ const authServices = {
 
     unSaveContent: async (captionId) => {
         try {
-            const response = await axiosConfig.post('/api/unsave-content', {
-                captionId
+            const response = await axiosConfig.post('/api/unsave-content', {}, {
+                params: { captionId },
             });
             return response.data;
         } catch (error) {

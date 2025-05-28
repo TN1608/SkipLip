@@ -14,7 +14,6 @@ export const LoginPage = ({ onAuthSuccess }) => {
         try{
             setLoading(true);
             const response = await authServices.sendOTP(phoneNumber);
-            console.log('OTP sent successfully:', response);
             message.success(response.message);
             setStep(2);
         }catch (error) {
