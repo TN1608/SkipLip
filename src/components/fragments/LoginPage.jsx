@@ -30,10 +30,8 @@ export const LoginPage = ({ onAuthSuccess }) => {
         try {
             setLoading(true);
             const response = await authServices.verifyOTP(phone, otpCode);
+            onAuthSuccess(phone);
             message.success(response.message);
-            if (onAuthSuccess) {
-                onAuthSuccess(phone);
-            }
         } catch (error) {
             console.error('Error verifying OTP:', error);
             message.error('Invalid OTP. Please try again.');

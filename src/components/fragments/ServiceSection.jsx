@@ -13,7 +13,6 @@ export const ServiceSection = ({currentUserPhone}) => {
     const [selectedIdeaForChat, setSelectedIdeaForChat] = useState(null);
     const [chatMode, setChatMode] = useState('scratch');
     const [loading, setLoading] = useState(false);
-
     const handleStartFromScratch = () => {
         setChatMode('scratch');
         setView('chat');

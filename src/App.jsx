@@ -1,17 +1,19 @@
-import {RiCustomerService2Fill} from "react-icons/ri";
-import {ServiceSection} from "@fragments/ServiceSection.jsx";
-import {ProfileSection} from "@fragments/ProfileSection.jsx";
-import {LoginPage} from "@fragments/LoginPage.jsx";
-import {FaUser} from "react-icons/fa";
-import {useEffect, useState} from "react";
-import {Breadcrumb, Layout, Tooltip} from "antd";
-import {Sidebar} from "@ui/Sidebar.jsx";
-import {Content, Footer, Header} from "antd/es/layout/layout.js";
+// App.jsx
+import { RiCustomerService2Fill } from "react-icons/ri";
+import { ServiceSection } from "@fragments/ServiceSection.jsx";
+import { ProfileSection } from "@fragments/ProfileSection.jsx";
+import { LoginPage } from "@fragments/LoginPage.jsx";
+import { FaUser } from "react-icons/fa";
+import { useEffect, useState } from "react";
+import {Breadcrumb, Layout, Spin, Tooltip} from "antd";
+import { Sidebar } from "@ui/Sidebar.jsx";
+import { Content, Footer, Header } from "antd/es/layout/layout.js";
 import BreadcrumbItem from "antd/es/breadcrumb/BreadcrumbItem.js";
 
 export const App = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [currentUserPhone, setCurrentUserPhone] = useState(null);
+    const [isInitialLoad, setIsInitialLoad] = useState(false); // New state to handle initial load
 
     const menuItems = [
         {
@@ -28,16 +30,22 @@ export const App = () => {
         }
     ];
 
+    const [selectedContent, setSelectedContent] = useState(null); // Initialize as null
+    const [selectedLabel, setSelectedLabel] = useState('Services');
 
-
-    const [selectedContent, setSelectedContent] = useState(menuItems[0].content);
-    const [selectedLabel, setSelectedLabel] = useState(menuItems[0].label);
+    useEffect(() => {
+        // Set initial content after currentUserPhone is updated
+        if (isAuthenticated && currentUserPhone) {
+            setSelectedContent(<ServiceSection currentUserPhone={currentUserPhone} />);
+            setSelectedLabel(menuItems[0].label);
+            setIsInitialLoad(false); // Reset initial load flag
+        }
+    }, [isAuthenticated, currentUserPhone]);
 
     const handleAuthSuccess = (phone) => {
         setIsAuthenticated(true);
         setCurrentUserPhone(phone);
-        setSelectedContent(menuItems[0].content);
-        setSelectedLabel(menuItems[0].label);
+        setIsInitialLoad(true); // Set initial load flag
     };
 
     const handleMenuSelect = (key) => {
@@ -62,13 +70,13 @@ export const App = () => {
         <div className={"flex items-center justify-between p-4"}>
             <h2 className={"text-2xl font-bold text-black"}>Hello, Skipli AI</h2>
         </div>
-    )
+    );
 
     const footer = (
         <Tooltip title={'Created and designed by TN1608'}>
             Skipli AI ©2025 Created by TuanNguyen
         </Tooltip>
-    )
+    );
 
     return (
         <>
@@ -76,7 +84,7 @@ export const App = () => {
                 <LoginPage onAuthSuccess={handleAuthSuccess} />
             ) : (
                 <Layout className={"min-h-screen bg-gray-100"}>
-                    <Sidebar onSelect={handleMenuSelect} menuItems={menuItems}/>
+                    <Sidebar onSelect={handleMenuSelect} menuItems={menuItems} />
                     <Layout className={"site-layout"}>
                         <div className={"bg-white flex items-center justify-between px-4"}>
                             {header}
@@ -87,18 +95,27 @@ export const App = () => {
                                 <BreadcrumbItem>{selectedLabel}</BreadcrumbItem>
                             </Breadcrumb>
                             <div className={"bg-white p-6 min-h-full"}>
-                                {selectedContent}
+                                {isInitialLoad ? (
+                                    <div className={"flex items-center justify-center h-full"}>
+                                        <Spin
+                                            size="large"
+                                            tip="Loading your content..."
+                                            className={"text-gray-500"}
+                                        />
+                                    </div>
+                                ) : (
+                                    selectedContent
+                                )}
                             </div>
                         </Content>
-                        <Footer
-                            className={"text-center text-gray-600 bg-gray-200"}>
+                        <Footer className={"text-center text-gray-600 bg-gray-200"}>
                             {footer}
                         </Footer>
                     </Layout>
                 </Layout>
             )}
         </>
-    )
-}
+    );
+};
 
 export default App;
