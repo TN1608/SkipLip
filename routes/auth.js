@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const createError = require('http-errors');
-const { db } = require('../config/firebase');
-const { doc, setDoc, getDoc, collection, getDocs, deleteDoc, query, where } = require('firebase/firestore');
-const { GeneratePostCaptions, GetPostIdeas, CreateCaptionsFromIdeas } = require('./generateAI');
+const {db} = require('../config/firebase');
+const {doc, setDoc, getDoc, collection, getDocs, deleteDoc, query, where} = require('firebase/firestore');
+const {GeneratePostCaptions, GetPostIdeas, CreateCaptionsFromIdeas} = require('./generateAI');
 
 // Hàm tạo OTP ngẫu nhiên (6 chữ số)
 const CreateNewAccessCode = () => {
@@ -15,39 +15,51 @@ const ValidateAccessCode = async (phone, code) => {
     const formattedPhone = `+84${phone.replace(/^0/, '')}`;
     const otpDoc = await getDoc(doc(db, 'otp_verifications', formattedPhone));
     if (!otpDoc.exists()) {
-        return { valid: false, reason: 'No OTP found for this phone number' };
+        return {valid: false, reason: 'No OTP found for this phone number'};
     }
     const otpData = otpDoc.data();
-    const { otp, expireDate } = otpData;
+    const {otp, expireDate} = otpData;
     if (new Date() > new Date(expireDate)) {
-        return { valid: false, reason: 'OTP has expired' };
+        return {valid: false, reason: 'OTP has expired'};
     }
     if (otp === code) {
-        return { valid: true };
+        return {valid: true};
     } else {
-        return { valid: false, reason: 'Invalid OTP' };
+        return {valid: false, reason: 'Invalid OTP'};
     }
 };
 
 
 // Send OTP (mock)
 router.post('/send-otp', async (req, res, next) => {
-    const { phone } = req.body;
+    const {phone} = req.body;
     if (!phone || !/^\d{10}$/.test(phone)) {
         return next(createError(400, 'Invalid phone number'));
     }
     const formattedPhone = `+84${phone.replace(/^0/, '')}`;
     const otp = CreateNewAccessCode();
     const expireDate = new Date(Date.now() + 5 * 60 * 1000);
+
     try {
-        console.log(`Mock SMS sent to ${formattedPhone}: Your Skipli AI verification code is: ${otp}`);
+        const userDocRef = doc(db, 'otp_verifications', formattedPhone);
+        const userDoc = await getDoc(userDocRef);
+
+        if (!userDoc.exists()) {
+            await setDoc(userDocRef, {
+                phone: formattedPhone,
+                createdAt: new Date().toISOString()
+            });
+        }
+
         await setDoc(doc(db, 'otp_verifications', formattedPhone), {
             verify: true,
             otp,
             expireDate: expireDate.toISOString(),
             createdAt: new Date().toISOString()
         });
-        res.status(200).json({ message: 'OTP sent successfully', otp });
+
+        console.log(`Mock SMS sent to ${formattedPhone}: Your Skipli AI verification code is: ${otp}`);
+        res.status(200).json({message: 'OTP sent successfully', otp});
     } catch (error) {
         console.error('Error sending OTP:', error.message);
         next(createError(500, `Failed to send OTP: ${error.message}`));
@@ -56,16 +68,16 @@ router.post('/send-otp', async (req, res, next) => {
 
 // Verify OTP
 router.post('/verify-otp', async (req, res, next) => {
-    const { phone, code } = req.body;
+    const {phone, code} = req.body;
     if (!phone || !/^\d{10}$/.test(phone) || !code) {
         return next(createError(400, 'Invalid phone number or OTP'));
     }
     try {
         const result = await ValidateAccessCode(phone, code);
         if (result.valid) {
-            res.status(200).json({ message: 'Phone number verified successfully' });
+            res.status(200).json({message: 'Phone number verified successfully'});
         } else {
-            res.status(400).json({ error: result.reason });
+            res.status(400).json({error: result.reason});
         }
     } catch (error) {
         console.error('Error verifying OTP:', error.message);
@@ -90,20 +102,20 @@ async function GetUserGeneratedContents(phone) {
     const querySnapshot = await getDocs(q);
     const contents = [];
     querySnapshot.forEach((doc) => {
-        contents.push({ id: doc.id, ...doc.data() });
+        contents.push({id: doc.id, ...doc.data()});
     });
     return contents;
 }
 
 async function UnsaveContent(captionId) {
     await deleteDoc(doc(db, 'generated_contents', captionId));
-    return { success: true };
+    return {success: true};
 }
 
 
 // Generate Post Captions
 router.post('/generate-post-captions', async (req, res, next) => {
-    const { socialNetwork, subject, tone } = req.body;
+    const {socialNetwork, subject, tone} = req.body;
     if (!socialNetwork || !subject || !tone) {
         return next(createError(400, 'Missing required parameters'));
     }
@@ -118,7 +130,7 @@ router.post('/generate-post-captions', async (req, res, next) => {
 
 // Get Post Ideas
 router.post('/get-post-ideas', async (req, res, next) => {
-    const { topic } = req.query;
+    const {topic} = req.query;
     if (!topic) {
         return next(createError(400, 'Missing topic'));
     }
@@ -133,7 +145,7 @@ router.post('/get-post-ideas', async (req, res, next) => {
 
 // Create Captions from Ideas
 router.post('/create-captions-from-ideas', async (req, res, next) => {
-    const { idea } = req.body;
+    const {idea} = req.body;
     if (!idea) {
         return next(createError(400, 'Missing idea'));
     }
@@ -148,14 +160,14 @@ router.post('/create-captions-from-ideas', async (req, res, next) => {
 
 // Save Generated Content
 router.post('/save-generated-content', async (req, res, next) => {
-    const { topic, data, phone } = req.body;
+    const {topic, data, phone} = req.body;
     if (!topic || !data || !phone) {
         return next(createError(400, 'Missing topic, data, or phone number'));
     }
     try {
         const formattedPhone = `+84${phone.replace(/^0/, '')}`;
         const contentId = await SaveGeneratedContent(topic, data, formattedPhone);
-        res.status(200).json({ success: true, contentId });
+        res.status(200).json({success: true, contentId});
     } catch (error) {
         console.error('Error saving content:', error.message);
         next(createError(500, `Failed to save content: ${error.message}`));
@@ -163,7 +175,7 @@ router.post('/save-generated-content', async (req, res, next) => {
 });
 
 router.get('/get-user-generated-contents', async (req, res, next) => {
-    const { phone } = req.query;
+    const {phone} = req.query;
     if (!phone) {
         return next(createError(400, 'Missing phone number'));
     }
@@ -178,13 +190,13 @@ router.get('/get-user-generated-contents', async (req, res, next) => {
 
 // Unsave Content
 router.post('/unsave-content', async (req, res, next) => {
-    const { captionId } = req.query;
+    const {captionId} = req.query;
     if (!captionId) {
         return next(createError(400, 'Missing caption ID'));
     }
     try {
         await UnsaveContent(captionId);
-        res.status(200).json({ success: true });
+        res.status(200).json({success: true});
     } catch (error) {
         console.error('Error unsaving content:', error.message);
         next(createError(500, `Failed to unsave content: ${error.message}`));
