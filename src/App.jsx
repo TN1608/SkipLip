@@ -1,4 +1,3 @@
-// App.jsx
 import { RiCustomerService2Fill } from "react-icons/ri";
 import { ServiceSection } from "@fragments/ServiceSection.jsx";
 import { ProfileSection } from "@fragments/ProfileSection.jsx";
