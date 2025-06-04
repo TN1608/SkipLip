@@ -1,0 +1,468 @@
+openapi: 3.0.3
+info:
+  title: Skipli AI API
+  description: API for generating social media content and managing OTP verification using Express backend
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Local server
+paths:
+  /api/send-otp:
+    post:
+      summary: Send OTP to phone number
+      description: Sends a one-time password (OTP) to a provided 10-digit phone number for verification.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:
+                  type: string
+                  description: 10-digit phone number (e.g., 0123456789)
+                  example: "0123456789"
+              required:
+                - phone
+      responses:
+        '200':
+          description: OTP sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: OTP sent successfully
+                  otp:
+                    type: string
+                    example: "123456"
+        '400':
+          description: Invalid phone number
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Invalid phone number
+        '500':
+          description: Failed to send OTP
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Failed to send OTP
+  /api/verify-otp:
+    post:
+      summary: Verify OTP for phone number
+      description: Verifies the OTP for a given phone number.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:
+                  type: string
+                  description: 10-digit phone number
+                  example: "0123456789"
+                code:
+                  type: string
+                  description: 6-digit OTP code
+                  example: "123456"
+              required:
+                - phone
+                - code
+      responses:
+        '200':
+          description: Phone number verified successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Phone number verified successfully
+        '400':
+          description: Invalid phone number or OTP
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Invalid OTP
+        '500':
+          description: Failed to verify OTP
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Failed to verify OTP
+  /api/generate-post-captions:
+    post:
+      summary: Generate social media post captions
+      description: Generates up to 5 social media captions based on the specified social network, subject, and tone.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                socialNetwork:
+                  type: string
+                  description: Target social media platform
+                  example: "Twitter"
+                subject:
+                  type: string
+                  description: Subject of the post
+                  example: "New Product Launch"
+                tone:
+                  type: string
+                  description: Desired tone of the captions
+                  example: "Exciting"
+              required:
+                - socialNetwork
+                - subject
+                - tone
+      responses:
+        '200':
+          description: Captions generated successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: [ "Caption 1", "Caption 2", "Caption 3", "Caption 4", "Caption 5" ]
+        '400':
+          description: Missing required parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Missing required parameters
+        '500':
+          description: Failed to generate captions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Failed to generate captions
+  /api/get-post-ideas:
+    post:
+      summary: Get post ideas for a topic
+      description: Generates up to 5 post ideas for a specified topic.
+      parameters:
+        - in: query
+          name: topic
+          required: true
+          schema:
+            type: string
+            example: "Fitness Tips"
+          description: Topic for generating post ideas
+      responses:
+        '200':
+          description: Post ideas generated successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: [ "Idea 1", "Idea 2", "Idea 3", "Idea 4", "Idea 5" ]
+        '400':
+          description: Missing topic
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Missing topic
+        '500':
+          description: Failed to generate ideas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Failed to generate ideas
+  /api/create-captions-from-ideas:
+    post:
+      summary: Create captions from a post idea
+      description: Generates up to 5 captions based on a provided post idea.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idea:
+                  type: string
+                  description: Post idea to generate captions
+                  example: "Share a fitness tip for beginners"
+              required:
+                - idea
+      responses:
+        '200':
+          description: Captions generated successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: [ "Caption 1", "Caption 2", "Caption 3", "Caption 4", "Caption 5" ]
+        '400':
+          description: Missing idea
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Missing idea
+        '500':
+          description: Failed to generate captions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Failed to generate captions
+  /api/save-generated-content:
+    post:
+      summary: Save generated content
+      description: Saves generated content linked to a phone number and topic.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                topic:
+                  type: string
+                  description: Topic of the content
+                  example: "Fitness Tips"
+                data:
+                  type: array
+                  items:
+                    type: string
+                  description: Generated content data
+                  example: [ "Caption 1", "Caption 2" ]
+                phone:
+                  type: string
+                  description: 10-digit phone number
+                  example: "0123456789"
+              required:
+                - topic
+                - data
+                - phone
+      responses:
+        '200':
+          description: Content saved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  contentId:
+                    type: string
+                    example: "123456789_abcdef123"
+        '400':
+          description: Missing required parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Missing topic, data, or phone number
+        '500':
+          description: Failed to save content
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Failed to save content
+  /api/get-user-generated-contents:
+    get:
+      summary: Get user's generated contents
+      description: Retrieves all generated contents associated with a phone number.
+      parameters:
+        - in: query
+          name: phone
+          required: true
+          schema:
+            type: string
+            example: "0123456789"
+          description: 10-digit phone number
+      responses:
+        '200':
+          description: Contents retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      example: "123456789_abcdef123"
+                    topic:
+                      type: string
+                      example: "Fitness Tips"
+                    data:
+                      type: array
+                      items:
+                        type: string
+                      example: [ "Caption 1", "Caption 2" ]
+                    phone:
+                      type: string
+                      example: "+84123456789"
+                    createdAt:
+                      type: string
+                      example: "2025-06-04T13:07:00.000Z"
+        '400':
+          description: Missing phone number
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Missing phone number
+        '500':
+          description: Failed to fetch contents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Failed to fetch contents
+  /api/unsave-content:
+    post:
+      summary: Unsave generated content
+      description: Deletes a specific generated content by its ID.
+      parameters:
+        - in: query
+          name: captionId
+          required: true
+          schema:
+            type: string
+            example: "123456789_abcdef123"
+          description: ID of the content to delete
+      responses:
+        '200':
+          description: Content deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: Missing caption ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Missing caption ID
+        '500':
+          description: Failed to unsave content
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Failed to unsave content
+  /:
+    get:
+      summary: Get home page
+      description: Renders the home page of the Express application.
+      responses:
+        '200':
+          description: Home page rendered successfully
+          content:
+            text/html:
+              schema:
+                type: string
+                description: HTML content of the home page
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Internal server error
+  /main:
+    get:
+      summary: Get main page
+      description: Returns a welcome message for the main page of Skipli AI.
+      responses:
+        '200':
+          description: Main page accessed successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Welcome to the main page of Skipli AI!
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Internal server error

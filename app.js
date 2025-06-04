@@ -1,5 +1,8 @@
 var createError = require('http-errors');
 var express = require('express');
+const swaggerUi = require('swagger-ui-express');
+const yaml = require('js-yaml');
+const fs = require('fs');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
@@ -11,6 +14,9 @@ var usersRouter = require('./routes/users');
 var authRouter = require('./routes/auth');
 
 var app = express();
+
+// Load Swagger document
+const swaggerDocument = yaml.load(fs.readFileSync('./swagger.yaml', 'utf8'));
 
 // Kiểm tra biến môi trường
 const requiredEnvVars = [
@@ -29,7 +35,10 @@ requiredEnvVars.forEach((varName) => {
     }
 });
 
-// view engine setup
+// Swagger setup
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+// View engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
 
@@ -54,12 +63,12 @@ app.get('/main', (req, res) => {
     res.send('Welcome to the main page of Skipli AI!');
 });
 
-// catch 404 and forward to error handler
+// Catch 404 and forward to error handler
 app.use(function (req, res, next) {
     next(createError(404, 'Not Found'));
 });
 
-// error handler
+// Error handler
 app.use(function (err, req, res, next) {
     res.locals.message = err.message;
     res.locals.error = req.app.get('env') === 'development' ? err : {};
